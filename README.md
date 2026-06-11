@@ -76,6 +76,11 @@ orchestrator routes. What that looks like in practice:
 
 ### 3. The bits worth knowing
 
+- **Workers are a warm pool, not per-task hires.** The first routine task spawns a sonnet worker;
+  later tasks are routed to that same worker (it keeps everything it learned — files read,
+  conventions, prior fixes), so follow-ups cost a fraction of a cold spawn. Workers are retired
+  when their context goes stale or they drift. Fable is the exception: never kept warm, spawned
+  per escalation only.
 - **Small things are done directly.** The skill has a briefing threshold: if delegating costs
   more than doing (quick reads, one-file tweaks), the orchestrator just does it. Don't be
   surprised when no worker spawns for small asks — that's the overhead guard working.

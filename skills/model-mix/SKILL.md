@@ -82,6 +82,29 @@ orchestrator does hands-on work only for the first row.
 | Codebase searches and exploration, boilerplate, single-file edits, doc updates, running tests/builds and reporting results, mechanical renames, lint fixes | `mix-sonnet-worker` | Agent tool, `subagent_type: "mix-sonnet-worker"` |
 | Cross-vendor second opinions, independent parallel implementation attempts, code review from a different model family, anything the user explicitly asks to send to Codex | Codex CLI | Bash, `codex exec` (see Codex delegation below) |
 
+## Warm worker pool
+
+Treat workers as standing employees, not per-ticket hires. Lifecycle:
+
+- **Lazy start.** Don't pre-spawn at activation — spawn the first sonnet worker when the first
+  routine task arrives (`run_in_background: true` so the orchestrator keeps working), and keep
+  its agent ID. Same for the first opus worker when complex implementation work shows up.
+- **Reuse by default.** Subsequent tasks of that tier go to the warm worker via SendMessage.
+  A warm worker that already explored the area finishes follow-up tasks in a fraction of the
+  cold-start cost — this is the main answer to delegation overhead.
+- **Scale out for fan-out.** Parallel independent tasks justify extra spawns; when the burst is
+  over, go back to routing through one warm worker per tier.
+- **Retire on drift.** A worker whose context is now irrelevant (project area changed completely)
+  or polluted (it's confused, repeating mistakes) gets retired — just stop messaging it and spawn
+  fresh. Don't send a confused worker "one more try."
+- **Fable is never pooled.** `mix-fable-worker` is spawned per escalation with a complete brief
+  and is done when it reports. Keeping the most expensive model warm "just in case" is exactly
+  the cost leak this setup exists to close. (Exception: while actively iterating on one escalated
+  problem, follow up via SendMessage rather than re-briefing a fresh Fable.)
+- **Track the roster.** The orchestrator keeps a mental note of live workers (ID, tier, what
+  context they hold) and mentions reuse in its routing reports ("sent to the warm sonnet worker
+  that did the earlier rename").
+
 ## Fable escalation gate
 
 Fable 5 is the scarce resource this setup protects. Before spawning `mix-fable-worker`, at least
@@ -164,7 +187,11 @@ Rules for Codex tasks:
   still isn't right, stop treating it as routine — that history is evidence for the Fable
   escalation gate. Escalate with the full bounce history instead of paying for a third cheap
   attempt.
-- **Continue, don't respawn.** To follow up with a worker that already has context, use
-  SendMessage with its agent ID instead of spawning a fresh one.
+- **Warm workers are the default — spawn is the exception.** Workers persist for the session;
+  reuse them. Route a new task to an existing worker via SendMessage (it keeps everything it
+  learned — files read, project conventions, prior fixes) instead of paying the cold start of a
+  fresh Agent call. Spawn a new worker only when: no live worker of the right tier exists, you're
+  fanning out in parallel and all warm workers are busy, or the new task is in a completely
+  unrelated area where the worker's accumulated context is dead weight. See Warm worker pool.
 - **Report routing to the user.** When summarizing, say briefly which tier did what, so the cost
   structure stays visible.

@@ -19,3 +19,7 @@ Rules:
   back with what you found — do not expand scope on your own. The orchestrator will re-scope.
 - Report tersely in your final message: what changed (files + one line each), what was verified
   and the result, and anything blocked or out of scope. No preamble, no restating the task.
+- You are long-lived: the orchestrator may send you follow-up tasks after you report. Treat each
+  as a fresh scoped task, but reuse what you already know — don't re-read files you've read or
+  re-derive conventions you've established. Your accumulated context is why you got the follow-up
+  instead of a new worker.
