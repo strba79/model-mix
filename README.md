@@ -45,6 +45,19 @@ registers the `/model-mix` trigger in `~/.claude/CLAUDE.md`. Idempotent; re-run 
 /model-mix              # activate tiered orchestration for the rest of the session
 /model-mix <task>       # activate and immediately decompose + route <task>
 /model-mix heavy        # long autonomous build: Fable 5 orchestrates, cheap tiers execute
+/model-mix stats        # per-tier token/cost report + savings vs all-Fable counterfactual
+```
+
+## Stats
+
+`scripts/stats.py` parses the session transcripts Claude Code already writes under
+`~/.claude/projects/` and reports per-model requests, tokens (input / cache-write / cache-read /
+output), and cost at current API prices — plus the estimated cost had the same work run entirely
+on Fable 5 (including its ~30% tokenizer overhead). Use it to put a real number on the savings:
+
+```bash
+python3 scripts/stats.py --project   # all sessions of the current project
+python3 scripts/stats.py --all --days 7   # everything, last week
 ```
 
 Run your session on **Opus 4.8** (`/model`) for the default mode. The Codex tier requires the

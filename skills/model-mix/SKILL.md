@@ -28,7 +28,22 @@ genuinely hard or urgent.
 /model-mix              # activate tiered orchestration for the rest of the session
 /model-mix <task>       # activate and immediately decompose + route <task>
 /model-mix heavy        # heavy mode: recommend Fable 5 AS the orchestrator (see Modes)
+/model-mix stats        # per-model token/cost report for this project (see Stats)
 ```
+
+## Stats
+
+`/model-mix stats` reports how tokens and cost were actually distributed across the tiers, plus
+the estimated savings vs. running everything on Fable 5. Run the bundled script via Bash:
+
+```bash
+python3 "$(ls -d ~/.claude/plugins/marketplaces/model-mix 2>/dev/null || echo ~/cursor/claude_add)/scripts/stats.py" --project
+```
+
+Flags: no flag = most recent session only; `--project` = all sessions of the current project;
+`--all` = every project; `--days N` = limit window. Present the script's output to the user
+as-is (it's already a table), adding one sentence of interpretation. Codex usage is billed by
+OpenAI and not included.
 
 ## Modes
 
