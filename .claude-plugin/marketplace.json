@@ -1,0 +1,17 @@
+{
+  "name": "model-mix",
+  "owner": {
+    "name": "Mirko"
+  },
+  "metadata": {
+    "description": "model-mix: tiered model orchestration plugin for Claude Code"
+  },
+  "plugins": [
+    {
+      "name": "model-mix",
+      "version": "0.1.0",
+      "source": "./",
+      "description": "Tiered model orchestration: Opus 4.8 orchestrates, Sonnet 4.6 takes routine work, Codex CLI takes cross-vendor work, Fable 5 stays in reserve for hard/urgent problems."
+    }
+  ]
+}
