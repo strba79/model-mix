@@ -1,0 +1,6 @@
+{"message": {"id": "msg_dup", "model": "claude-sonnet-4-6", "usage": {"input_tokens": 100, "output_tokens": 50}}}
+{"message": {"id": "msg_dup", "model": "claude-sonnet-4-6", "usage": {"input_tokens": 100, "output_tokens": 50}}}
+{"message": {"model": "claude-sonnet-4-6", "usage": {"input_tokens": 7, "output_tokens": 3}}}
+{"message": {"id": "msg_syn", "model": "<synthetic>", "usage": {"input_tokens": 999, "output_tokens": 999}}}
+{"message": {"id": "msg_f1", "model": "claude-fable-5", "usage": {"input_tokens": 200, "output_tokens": 100}}}
+{"message": {"id": "msg_h1", "model": "claude-haiku-4-5-20251001", "usage": {"input_tokens": 1000, "output_tokens": 500}}}

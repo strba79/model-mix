@@ -118,6 +118,7 @@ def main():
 
     total_cost = 0.0
     fable_counterfactual = 0.0
+    haiku_excluded = False
     unpriced = []
     for model, (n, inp, cw, cr, out) in sorted(stats.items()):
         key = price_key(model)
@@ -127,16 +128,22 @@ def main():
             continue
         c = cost(key, inp, cw, cr, out)
         total_cost += c
-        # same work on Fable: Fable prices + tokenizer inflation (skip if already Fable-tier)
-        factor = 1.0 if key in ("fable", "mythos") else FABLE_TOKENIZER_FACTOR
-        fable_counterfactual += cost("fable", inp * factor, cw * factor, cr * factor, out * factor)
+        if key == "haiku":
+            # Haiku usage is Claude Code background calls (title generation etc.) that would
+            # never have run on Fable; model-mix has no haiku tier — exclude from counterfactual.
+            haiku_excluded = True
+        else:
+            # same work on Fable: Fable prices + tokenizer inflation (skip if already Fable-tier)
+            factor = 1.0 if key in ("fable", "mythos") else FABLE_TOKENIZER_FACTOR
+            fable_counterfactual += cost("fable", inp * factor, cw * factor, cr * factor, out * factor)
         print(f"{model:<22}{n:>6}{inp:>12,}{cw:>12,}{cr:>14,}{out:>10,}{c:>10.2f}")
 
     print("-" * len(hdr))
     print(f"{'TOTAL':<22}{'':>6}{'':>12}{'':>12}{'':>14}{'':>10}{total_cost:>10.2f}")
     if fable_counterfactual > total_cost > 0:
         saved = fable_counterfactual - total_cost
-        print(f"\nall-Fable counterfactual (est., incl. ~30% tokenizer overhead): ${fable_counterfactual:.2f}")
+        haiku_note = "; haiku background calls excluded" if haiku_excluded else ""
+        print(f"\nall-Fable counterfactual (est., incl. ~30% tokenizer overhead{haiku_note}): ${fable_counterfactual:.2f}")
         print(f"estimated savings from the mix: ${saved:.2f} ({saved / fable_counterfactual * 100:.0f}%)")
     if unpriced:
         print(f"\nnote: no price table entry for: {', '.join(unpriced)} (excluded from totals)")

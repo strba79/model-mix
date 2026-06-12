@@ -1,9 +1,9 @@
 {
   "name": "model-mix",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Tiered model orchestration for Claude Code: Opus 4.8 orchestrates, Sonnet 4.6 takes routine work, Codex CLI takes cross-vendor work, and Fable 5 is held in reserve for genuinely hard or urgent problems.",
   "author": {
-    "name": "Mirko"
+    "name": "Nenad Strbic"
   },
   "keywords": [
     "claude",
