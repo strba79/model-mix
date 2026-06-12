@@ -34,11 +34,18 @@ genuinely hard or urgent.
 ## Stats
 
 `/model-mix stats` reports how tokens and cost were actually distributed across the tiers, plus
-the estimated savings vs. running everything on Fable 5. Run the bundled script via Bash:
+the estimated savings vs. running everything on Fable 5. Run the bundled script via Bash,
+resolving it from this skill's base directory (shown as "Base directory for this skill" when
+the skill was invoked):
 
 ```bash
-python3 "$(ls -d ~/.claude/plugins/marketplaces/model-mix 2>/dev/null || echo ~/cursor/claude_add)/scripts/stats.py" --project
+SKILL_DIR="<base directory for this skill>"
+python3 "$(ls "$SKILL_DIR/scripts/stats.py" "$SKILL_DIR/../../scripts/stats.py" 2>/dev/null | head -n1)" --project
 ```
+
+(The first candidate is the manual-install layout — `install.sh` copies the script into the
+skill directory; the second is a plugin install or repo checkout, where the script lives at
+the repo root under `scripts/`.)
 
 Flags: no flag = most recent session only; `--project` = all sessions of the current project;
 `--all` = every project; `--days N` = limit window. Present the script's output to the user

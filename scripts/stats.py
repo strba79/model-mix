@@ -42,7 +42,7 @@ def price_key(model: str):
 def session_files(args):
     base = os.path.expanduser("~/.claude/projects")
     if args.file:
-        return [args.file]
+        return [os.path.expanduser(args.file)]
     if args.all:
         files = glob.glob(os.path.join(base, "*", "*.jsonl"))
     else:
@@ -70,7 +70,7 @@ def aggregate(files):
         except OSError:
             continue
         with fh:
-            for line in fh:
+            for lineno, line in enumerate(fh):
                 try:
                     d = json.loads(line)
                 except json.JSONDecodeError:
@@ -79,7 +79,8 @@ def aggregate(files):
                 u, model = m.get("usage"), m.get("model")
                 if not u or not model or model == "<synthetic>":
                     continue
-                seen[(path, m.get("id") or id(line))] = (model, u)
+                # int fallback can't collide with real (str) message ids
+                seen[(path, m.get("id") or lineno)] = (model, u)
     for model, u in seen.values():
         row = stats.setdefault(model, [0, 0, 0, 0, 0])
         row[0] += 1

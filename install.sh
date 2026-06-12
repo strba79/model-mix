@@ -7,16 +7,19 @@ set -euo pipefail
 SRC="$(cd "$(dirname "$0")" && pwd)"
 CLAUDE_DIR="${CLAUDE_DIR:-$HOME/.claude}"
 
-mkdir -p "$CLAUDE_DIR/skills/model-mix" "$CLAUDE_DIR/agents"
+mkdir -p "$CLAUDE_DIR/skills/model-mix/scripts" "$CLAUDE_DIR/agents"
 
 cp "$SRC/skills/model-mix/SKILL.md" "$CLAUDE_DIR/skills/model-mix/SKILL.md"
+cp "$SRC/scripts/stats.py" "$CLAUDE_DIR/skills/model-mix/scripts/stats.py"
 cp "$SRC/agents/mix-opus-worker.md" \
    "$SRC/agents/mix-sonnet-worker.md" \
    "$SRC/agents/mix-fable-worker.md" \
    "$CLAUDE_DIR/agents/"
 
 CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
-if ! grep -q 'skill: "model-mix"' "$CLAUDE_MD" 2>/dev/null; then
+# Matches both the manual form (skill: "model-mix") and the plugin form
+# (skill: "model-mix:model-mix") so we never register a second, conflicting trigger.
+if ! grep -qE 'skill: "model-mix(:model-mix)?"' "$CLAUDE_MD" 2>/dev/null; then
   cat >> "$CLAUDE_MD" <<'EOF'
 # model-mix
 - **model-mix** (`~/.claude/skills/model-mix/SKILL.md`) - tiered orchestration: Opus 4.8 orchestrates; mix-sonnet-worker (Sonnet 4.6) takes routine work; Codex CLI (`codex exec` via Bash) takes cross-vendor second opinions and parallel attempts; mix-fable-worker (Fable 5) is held in reserve for genuinely hard or urgent problems only. Trigger: `/model-mix`
