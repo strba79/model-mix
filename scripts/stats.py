@@ -3,7 +3,8 @@
 
 Reads the JSONL session transcripts Claude Code writes under ~/.claude/projects/,
 aggregates token usage by model (main session + subagent sidechains), prices it,
-and shows the counterfactual cost had everything run on Fable 5.
+and shows the counterfactual cost had everything run on Opus 4.8 (the orchestrator
+tier) instead of routing routine work down to Sonnet.
 
 Usage:
   stats.py                 # current project (cwd), most recent session
@@ -21,6 +22,8 @@ import sys
 import time
 
 # $/MTok: (input, output). Cache read = 0.1x input, cache write = 1.25x input (5m TTL).
+# fable/mythos retained so historical transcripts still price correctly, but the
+# counterfactual baseline is Opus (fable is no longer a tier in this setup).
 PRICES = {
     "fable": (10.0, 50.0),
     "mythos": (10.0, 50.0),
@@ -28,8 +31,6 @@ PRICES = {
     "sonnet": (3.0, 15.0),
     "haiku": (1.0, 5.0),
 }
-# Fable's tokenizer yields ~30% more tokens for the same content than Opus-tier models.
-FABLE_TOKENIZER_FACTOR = 1.30
 
 
 def price_key(model: str):
@@ -117,7 +118,8 @@ def main():
     print("-" * len(hdr))
 
     total_cost = 0.0
-    fable_counterfactual = 0.0
+    mix_excl_haiku = 0.0       # actual mix cost, haiku background calls removed
+    opus_counterfactual = 0.0  # same non-haiku work repriced at the Opus tier
     haiku_excluded = False
     unpriced = []
     for model, (n, inp, cw, cr, out) in sorted(stats.items()):
@@ -130,21 +132,23 @@ def main():
         total_cost += c
         if key == "haiku":
             # Haiku usage is Claude Code background calls (title generation etc.) that would
-            # never have run on Fable; model-mix has no haiku tier — exclude from counterfactual.
+            # never have run on Opus; model-mix has no haiku tier — exclude from the comparison
+            # on both sides so it doesn't distort the savings number.
             haiku_excluded = True
         else:
-            # same work on Fable: Fable prices + tokenizer inflation (skip if already Fable-tier)
-            factor = 1.0 if key in ("fable", "mythos") else FABLE_TOKENIZER_FACTOR
-            fable_counterfactual += cost("fable", inp * factor, cw * factor, cr * factor, out * factor)
+            mix_excl_haiku += c
+            # same work on the Opus orchestrator tier (all Claude models share a tokenizer,
+            # so the token counts carry over directly)
+            opus_counterfactual += cost("opus", inp, cw, cr, out)
         print(f"{model:<22}{n:>6}{inp:>12,}{cw:>12,}{cr:>14,}{out:>10,}{c:>10.2f}")
 
     print("-" * len(hdr))
     print(f"{'TOTAL':<22}{'':>6}{'':>12}{'':>12}{'':>14}{'':>10}{total_cost:>10.2f}")
-    if fable_counterfactual > total_cost > 0:
-        saved = fable_counterfactual - total_cost
+    if opus_counterfactual > mix_excl_haiku > 0:
+        saved = opus_counterfactual - mix_excl_haiku
         haiku_note = "; haiku background calls excluded" if haiku_excluded else ""
-        print(f"\nall-Fable counterfactual (est., incl. ~30% tokenizer overhead{haiku_note}): ${fable_counterfactual:.2f}")
-        print(f"estimated savings from the mix: ${saved:.2f} ({saved / fable_counterfactual * 100:.0f}%)")
+        print(f"\nall-Opus counterfactual (est.{haiku_note}): ${opus_counterfactual:.2f}")
+        print(f"estimated savings from the mix: ${saved:.2f} ({saved / opus_counterfactual * 100:.0f}%)")
     if unpriced:
         print(f"\nnote: no price table entry for: {', '.join(unpriced)} (excluded from totals)")
     print("note: Codex CLI usage is billed by OpenAI and not visible in Claude transcripts.")

@@ -13,7 +13,6 @@ cp "$SRC/skills/model-mix/SKILL.md" "$CLAUDE_DIR/skills/model-mix/SKILL.md"
 cp "$SRC/scripts/stats.py" "$CLAUDE_DIR/skills/model-mix/scripts/stats.py"
 cp "$SRC/agents/mix-opus-worker.md" \
    "$SRC/agents/mix-sonnet-worker.md" \
-   "$SRC/agents/mix-fable-worker.md" \
    "$CLAUDE_DIR/agents/"
 
 CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
@@ -22,7 +21,7 @@ CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
 if ! grep -qE 'skill: "model-mix(:model-mix)?"' "$CLAUDE_MD" 2>/dev/null; then
   cat >> "$CLAUDE_MD" <<'EOF'
 # model-mix
-- **model-mix** (`~/.claude/skills/model-mix/SKILL.md`) - tiered orchestration: Opus 4.8 orchestrates; mix-sonnet-worker (Sonnet 4.6) takes routine work; Codex CLI (`codex exec` via Bash) takes cross-vendor second opinions and parallel attempts; mix-fable-worker (Fable 5) is held in reserve for genuinely hard or urgent problems only. Trigger: `/model-mix`
+- **model-mix** (`~/.claude/skills/model-mix/SKILL.md`) - tiered orchestration: Opus 4.8 orchestrates, handles design, and takes the hard problems; mix-sonnet-worker (Sonnet 4.6) takes routine work; Codex CLI (`codex exec` via Bash) takes cross-vendor second opinions, parallel attempts, and is the escalation valve when Opus is stuck. Trigger: `/model-mix`
 When the user types `/model-mix`, invoke the Skill tool with `skill: "model-mix"` before doing anything else.
 EOF
   echo "Registered /model-mix trigger in $CLAUDE_MD"

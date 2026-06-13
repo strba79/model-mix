@@ -9,9 +9,9 @@
   "plugins": [
     {
       "name": "model-mix",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "source": "./",
-      "description": "Tiered model orchestration: Opus 4.8 orchestrates, Sonnet 4.6 takes routine work, Codex CLI takes cross-vendor work, Fable 5 stays in reserve for hard/urgent problems."
+      "description": "Tiered model orchestration: Opus 4.8 orchestrates and takes the hard problems, Sonnet 4.6 takes routine work, Codex CLI takes cross-vendor work and is the escalation valve when Opus is stuck."
     }
   ]
 }

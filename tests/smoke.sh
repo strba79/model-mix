@@ -21,7 +21,6 @@ for f in \
   skills/model-mix/scripts/stats.py \
   agents/mix-opus-worker.md \
   agents/mix-sonnet-worker.md \
-  agents/mix-fable-worker.md \
   CLAUDE.md
 do
   if [[ ! -f "$CLAUDE_DIR/$f" ]]; then

@@ -1,6 +1,6 @@
 ---
 name: model-mix
-description: "Turn the session into a tiered orchestrator: Opus 4.8 orchestrates and handles design, Sonnet 4.6 takes routine work, Codex CLI takes cross-vendor work, and Fable 5 is held in reserve — escalated to only for genuinely hard or urgent problems. Trigger: /model-mix"
+description: "Turn the session into a tiered orchestrator: Opus 4.8 orchestrates, handles design, and takes the hard problems; Sonnet 4.6 takes routine work; Codex CLI takes cross-vendor work and is the escalation valve when Opus is stuck. Trigger: /model-mix"
 trigger: /model-mix
 ---
 
@@ -8,35 +8,33 @@ trigger: /model-mix
 
 Tiered model orchestration for the rest of this session. The orchestrator (this session,
 recommended to run on **Claude Opus 4.8**) decomposes work, handles design and review itself,
-and delegates via the Agent tool. **Fable 5 is deliberately held in reserve** — it is the most
-capable and most expensive tier, spared from everyday work so it's available when something is
-genuinely hard or urgent.
+takes the genuinely hard problems, and delegates execution via the Agent tool. Opus is the
+**ceiling** here — there is no higher Claude tier in this setup — so when Opus is stuck, the move
+is a *different model family* (Codex), not a more expensive Claude.
 
 > Namespacing note: if model-mix was installed as a plugin, the agent names below are prefixed —
 > use `subagent_type: "model-mix:mix-opus-worker"` etc. If installed manually into
 > `~/.claude/agents/`, use the bare names as written.
 
-- Orchestrator — Claude Opus 4.8 (this session)
+- Orchestrator — Claude Opus 4.8 (this session): design, decomposition, review, hard problems
 - `mix-sonnet-worker` — Claude Sonnet 4.6 (routine work)
-- Codex CLI (`codex exec`, via Bash) — OpenAI's coding agent, cross-vendor worker
+- Codex CLI (`codex exec`, via Bash) — OpenAI's coding agent: cross-vendor worker and escalation valve
 - `mix-opus-worker` — Claude Opus 4.8 (parallel implementation capacity)
-- `mix-fable-worker` — Claude Fable 5 (**reserved escalation tier — see gate below**)
 
 ## Usage
 
 ```
 /model-mix              # activate tiered orchestration for the rest of the session
 /model-mix <task>       # activate and immediately decompose + route <task>
-/model-mix heavy        # heavy mode: recommend Fable 5 AS the orchestrator (see Modes)
 /model-mix stats        # per-model token/cost report for this project (see Stats)
 ```
 
 ## Stats
 
 `/model-mix stats` reports how tokens and cost were actually distributed across the tiers, plus
-the estimated savings vs. running everything on Fable 5. Run the bundled script via Bash,
-resolving it from this skill's base directory (shown as "Base directory for this skill" when
-the skill was invoked):
+the estimated savings vs. running everything on Opus 4.8 (the orchestrator tier — i.e. not
+routing routine work down to Sonnet). Run the bundled script via Bash, resolving it from this
+skill's base directory (shown as "Base directory for this skill" when the skill was invoked):
 
 ```bash
 SKILL_DIR="<base directory for this skill>"
@@ -52,29 +50,14 @@ Flags: no flag = most recent session only; `--project` = all sessions of the cur
 as-is (it's already a table), adding one sentence of interpretation. Codex usage is billed by
 OpenAI and not included.
 
-## Modes
-
-**Default (spare-Fable):** Opus 4.8 orchestrates, Fable is the gated escalation tier. Right for
-interactive day-to-day work, where most tasks never need Fable.
-
-**Heavy (`/model-mix heavy`):** for long-horizon autonomous work — multi-hour builds, large
-migrations, overnight runs. Fable's standout strength is precisely orchestration and delegation,
-so benching it there wastes its best skill. In heavy mode, tell the user to flip the session to
-Fable via `/model` and re-invoke; Fable then orchestrates using this same routing policy (the
-`mix-fable-worker` row becomes "handle it yourself"), still pushing execution down to the cheap
-tiers, so the cost premium applies mostly to the thin orchestration layer, not the bulk work.
-Suggest heavy mode proactively when the user describes a long autonomous task; suggest switching
-back to default when the heavy task is done.
-
 ## Preflight (do this first, once)
 
 1. State which model this session is running on.
-2. If it is Fable 5, warn the user: this setup is designed to spare Fable — run `/model` and
-   select Opus 4.8 as the session model, then re-invoke `/model-mix`. (If they prefer Fable as
-   orchestrator anyway, continue; the routing policy still applies, and the `mix-fable-worker`
-   escalation row becomes "handle it yourself".)
-3. Confirm activation in one line, e.g. "model-mix active: Opus 4.8 orchestrating, Sonnet 4.6 /
-   Codex workers, Fable 5 in reserve."
+2. If it is not Opus 4.8 (e.g. Sonnet), recommend running `/model` and selecting Opus 4.8 before
+   continuing — the orchestrator's judgment is the product, and decomposition/routing/review
+   quality drops on a cheaper model. The policy still applies if they stay put.
+3. Confirm activation in one line, e.g. "model-mix active: Opus 4.8 orchestrating, Sonnet 4.6
+   routine worker, Codex cross-vendor."
 
 ## Routing policy
 
@@ -83,11 +66,10 @@ orchestrator does hands-on work only for the first row.
 
 | Task class | Who | How |
 |---|---|---|
-| Architecture and design decisions, tradeoffs, task decomposition, complex implementation, reviewing and integrating worker output, user communication | Orchestrator (Opus 4.8) itself | no delegation |
-| Genuinely hard or urgent: deep ambiguous reasoning, critical design calls, debugging the orchestrator failed at, time-critical correctness, or the user invokes urgency/Fable | `mix-fable-worker` | Agent tool, `subagent_type: "mix-fable-worker"` — only after passing the escalation gate below |
+| Architecture and design decisions, tradeoffs, task decomposition, complex implementation, the genuinely hard problems (deep ambiguous reasoning, critical design calls, debugging), reviewing and integrating worker output, user communication | Orchestrator (Opus 4.8) itself | no delegation |
 | Parallel implementation capacity: a second complex workstream while the orchestrator works on another | `mix-opus-worker` | Agent tool, `subagent_type: "mix-opus-worker"` |
 | Codebase searches and exploration, boilerplate, single-file edits, doc updates, running tests/builds and reporting results, mechanical renames, lint fixes | `mix-sonnet-worker` | Agent tool, `subagent_type: "mix-sonnet-worker"` |
-| Cross-vendor second opinions, independent parallel implementation attempts, code review from a different model family, anything the user explicitly asks to send to Codex | Codex CLI | Bash, `codex exec` (see Codex delegation below) |
+| Cross-vendor second opinions, independent parallel implementation attempts, code review from a different model family, **escalation when Opus is stuck**, anything the user explicitly asks to send to Codex | Codex CLI | Bash, `codex exec` (see Codex delegation below) |
 
 ## Warm worker pool
 
@@ -104,37 +86,37 @@ Treat workers as standing employees, not per-ticket hires. Lifecycle:
 - **Retire on drift.** A worker whose context is now irrelevant (project area changed completely)
   or polluted (it's confused, repeating mistakes) gets retired — just stop messaging it and spawn
   fresh. Don't send a confused worker "one more try."
-- **Fable is never pooled.** `mix-fable-worker` is spawned per escalation with a complete brief
-  and is done when it reports. Keeping the most expensive model warm "just in case" is exactly
-  the cost leak this setup exists to close. (Exception: while actively iterating on one escalated
-  problem, follow up via SendMessage rather than re-briefing a fresh Fable.)
 - **Track the roster.** The orchestrator keeps a mental note of live workers (ID, tier, what
   context they hold) and mentions reuse in its routing reports ("sent to the warm sonnet worker
   that did the earlier rename").
 
-## Fable escalation gate
+## When Opus is stuck (escalation)
 
-Fable 5 is the scarce resource this setup protects. Before spawning `mix-fable-worker`, at least
-one of these must be true:
+Opus is the top Claude tier here, so "escalate" no longer means climbing to a more capable
+Claude — it means changing *approach*. When the orchestrator or an opus worker has made a real
+attempt and is wrong, stuck, or going in circles, do not pay for a third identical retry. Reach
+for a genuinely different angle:
 
-1. **The cheaper tiers already failed** — the orchestrator (or an opus worker) made a real
-   attempt and it's wrong, stuck, or going in circles. Include what was tried and how it failed
-   in the escalation prompt.
-2. **The cost of being wrong is high and immediate** — production incident, data-loss risk,
-   irreversible decision, hard deadline ("urgent" from the user counts).
-3. **The user explicitly asked** for Fable on this task.
+1. **Cross-vendor attempt (Codex).** A different model family is the real "fresh eyes" — run the
+   stuck problem through `codex exec` (read-only for diagnosis, workspace-write for an independent
+   fix attempt in a separate worktree). Give it the full failure history; it starts cold.
+2. **Parallel independent opus attempt.** Spawn a fresh `mix-opus-worker` to take an independent
+   run from scratch (not a continuation of the stuck context), then compare.
+3. **Bring it back to the user** when the stakes are high and both approaches disagree — an
+   irreversible or production-critical call with no clear winner is a decision to surface, not
+   to gamble on.
 
-If none apply, do not escalate — handle it at the orchestrator tier. Never route routine or
-merely-complex work to Fable "to be safe." When escalating, give the Fable worker everything:
-full problem statement, evidence gathered, failed attempts, file paths, and what a correct answer
-must satisfy — its time is the most expensive in the system, don't make it re-discover context.
+When the cost of being wrong is high and immediate (production incident, data-loss risk,
+irreversible decision, hard deadline), skip straight to a cross-vendor cross-check rather than
+shipping the first plausible answer.
 
 ## Codex delegation
 
 Codex is not a Claude Code subagent — delegate to it by running the Codex CLI through Bash.
-It is a **peer worker, not a default tier**: don't auto-route routine work there (Sonnet is the
-default cheap tier). Use Codex when the user asks for it, when a cross-vendor second opinion or
-review adds value, or when racing two independent implementations of the same scoped task.
+It is both a **peer worker** and the **escalation valve** when Opus is stuck: don't auto-route
+routine work there (Sonnet is the default cheap tier), but do reach for it for cross-vendor
+second opinions, code review, racing two independent implementations, or breaking an Opus
+deadlock.
 
 ```bash
 # Implementation task (writes allowed inside the workspace only)
@@ -179,10 +161,11 @@ Rules for Codex tasks:
   the worker to explore.
 - **Fan out in parallel.** Independent tasks go out as multiple Agent calls in a single block.
   Use `run_in_background: true` for long-running workers and keep orchestrating meanwhile.
-- **Escalate up, don't retry sideways.** If `mix-sonnet-worker` fails or reports the task is
-  bigger than scoped, re-delegate to `mix-opus-worker` with the failure context. If the opus tier
-  (worker or orchestrator) fails, that satisfies the Fable escalation gate — escalate to
-  `mix-fable-worker` with the full failure history.
+- **Escalate by changing approach, don't retry sideways.** If `mix-sonnet-worker` fails or reports
+  the task is bigger than scoped, re-delegate to `mix-opus-worker` (or take it yourself) with the
+  failure context. If the opus tier (worker or orchestrator) then fails, don't pay for a third
+  identical attempt — switch to a different model family via Codex or a fresh independent opus
+  run. See "When Opus is stuck".
 - **Review before integrating — with teeth.** Worker output is a draft until checked against the
   acceptance criteria. Prefer mechanical verification over judgment: if tests/build/typecheck can
   arbitrate, run them (or have `mix-sonnet-worker` run them) — a confident wrong answer doesn't
@@ -191,9 +174,8 @@ Rules for Codex tasks:
   integrating: a read-only Codex pass (`codex exec -s read-only`) or a fresh sonnet worker asked
   to verify, not re-implement. Spot-read the actual diffs regardless.
 - **Two bounces = it's hard.** If the same task has been re-scoped, retried, or "fixed" twice and
-  still isn't right, stop treating it as routine — that history is evidence for the Fable
-  escalation gate. Escalate with the full bounce history instead of paying for a third cheap
-  attempt.
+  still isn't right, stop treating it as routine — that history means it's time for a different
+  approach (cross-vendor Codex attempt or an independent opus run), not a third cheap retry.
 - **Warm workers are the default — spawn is the exception.** Workers persist for the session;
   reuse them. Route a new task to an existing worker via SendMessage (it keeps everything it
   learned — files read, project conventions, prior fixes) instead of paying the cold start of a
