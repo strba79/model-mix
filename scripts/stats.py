@@ -113,20 +113,22 @@ def main():
         sys.exit("no usage records found")
 
     print(f"model-mix stats — {len(files)} session file(s)\n")
-    hdr = f"{'model':<22}{'reqs':>6}{'input':>12}{'cache-w':>12}{'cache-r':>14}{'output':>10}{'cost $':>10}"
-    print(hdr)
-    print("-" * len(hdr))
 
+    # First pass: price every model and accumulate the totals, so the table can show
+    # each tier's share of cost (you can't compute a percentage until the total is known).
+    rows = []  # (model, n, inp, cw, cr, out, key, cost or None)
     total_cost = 0.0
     mix_excl_haiku = 0.0       # actual mix cost, haiku background calls removed
     opus_counterfactual = 0.0  # same non-haiku work repriced at the Opus tier
+    capability_cost = 0.0      # the top capability tier: fable/mythos historically, opus now
+    fable_cost = 0.0           # the now-removed top tier specifically, for historical data
     haiku_excluded = False
     unpriced = []
     for model, (n, inp, cw, cr, out) in sorted(stats.items()):
         key = price_key(model)
         if key is None:
             unpriced.append(model)
-            print(f"{model:<22}{n:>6}{inp:>12,}{cw:>12,}{cr:>14,}{out:>10,}{'?':>10}")
+            rows.append((model, n, inp, cw, cr, out, None, None))
             continue
         c = cost(key, inp, cw, cr, out)
         total_cost += c
@@ -140,10 +142,35 @@ def main():
             # same work on the Opus orchestrator tier (all Claude models share a tokenizer,
             # so the token counts carry over directly)
             opus_counterfactual += cost("opus", inp, cw, cr, out)
-        print(f"{model:<22}{n:>6}{inp:>12,}{cw:>12,}{cr:>14,}{out:>10,}{c:>10.2f}")
+        if key in ("fable", "mythos", "opus"):
+            capability_cost += c
+        if key in ("fable", "mythos"):
+            fable_cost += c
+        rows.append((model, n, inp, cw, cr, out, key, c))
+
+    hdr = f"{'model':<22}{'reqs':>6}{'input':>12}{'cache-w':>12}{'cache-r':>14}{'output':>10}{'cost $':>10}{'% cost':>8}"
+    print(hdr)
+    print("-" * len(hdr))
+    for model, n, inp, cw, cr, out, key, c in rows:
+        if c is None:
+            print(f"{model:<22}{n:>6}{inp:>12,}{cw:>12,}{cr:>14,}{out:>10,}{'?':>10}{'':>8}")
+            continue
+        pct = c / total_cost * 100 if total_cost else 0.0
+        print(f"{model:<22}{n:>6}{inp:>12,}{cw:>12,}{cr:>14,}{out:>10,}{c:>10.2f}{pct:>8.1f}")
 
     print("-" * len(hdr))
-    print(f"{'TOTAL':<22}{'':>6}{'':>12}{'':>12}{'':>14}{'':>10}{total_cost:>10.2f}")
+    total_pct = 100.0 if total_cost else 0.0
+    print(f"{'TOTAL':<22}{'':>6}{'':>12}{'':>12}{'':>14}{'':>10}{total_cost:>10.2f}{total_pct:>8.1f}")
+
+    # How much did the work actually lean on the most-capable (most expensive) tier — the
+    # question the whole spare-the-top-tier setup exists to answer.
+    if total_cost > 0:
+        print(f"\ntop capability tier (opus/fable — the expensive tier): "
+              f"{capability_cost / total_cost * 100:.1f}% of cost")
+        if fable_cost > 0:
+            print(f"  of which Fable (the now-removed top tier): "
+                  f"{fable_cost / total_cost * 100:.1f}% of cost")
+
     if opus_counterfactual > mix_excl_haiku > 0:
         saved = opus_counterfactual - mix_excl_haiku
         haiku_note = "; haiku background calls excluded" if haiku_excluded else ""
