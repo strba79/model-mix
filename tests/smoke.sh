@@ -74,9 +74,17 @@ echo "PASS: plugin-form guard"
 fixture="$REPO/tests/fixtures/session.jsonl"
 output=$(python3 "$REPO/scripts/stats.py" --file "$fixture" 2>&1)
 
-# Sonnet row: 2 reqs, input 107 (100 deduped + 7 no-id)
-if ! echo "$output" | grep -qE 'sonnet[^ ]*[[:space:]]+2[[:space:]]+107'; then
+# Sonnet row: 2 reqs, then the % reqs column, then input 107 (100 deduped + 7 no-id)
+if ! echo "$output" | grep -qE 'sonnet[^ ]*[[:space:]]+2[[:space:]]+[0-9.]+[[:space:]]+107'; then
   echo "FAIL: stats.py — expected sonnet row with 2 reqs and 107 input tokens"
+  echo "Output:"
+  echo "$output"
+  exit 1
+fi
+
+# Calls-vs-cost concentration summary for the expensive capability tier
+if ! echo "$output" | grep -qE 'expensive tier \(Opus(/Fable)?\): [0-9.]+% of calls, [0-9.]+% of cost'; then
+  echo "FAIL: stats.py — expected 'expensive tier' calls-vs-cost summary"
   echo "Output:"
   echo "$output"
   exit 1

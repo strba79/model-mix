@@ -148,27 +148,52 @@ def main():
             fable_cost += c
         rows.append((model, n, inp, cw, cr, out, key, c))
 
-    hdr = f"{'model':<22}{'reqs':>6}{'input':>12}{'cache-w':>12}{'cache-r':>14}{'output':>10}{'cost $':>10}{'% cost':>8}"
+    # "mine first": the orchestrator tier (Opus) leads the table, then everyone else by
+    # descending cost, unpriced rows last. The table is about who did the work, and the
+    # orchestrator is the fixed point you route everything else away from.
+    rows.sort(key=lambda r: (0 if r[6] == "opus" else 1, r[6] is None, -(r[7] or 0)))
+
+    # Request-count totals: the table's "% reqs" column (how often each tier was called) and
+    # the headline below both divide by the same all-tiers request total.
+    total_reqs = sum(r[1] for r in rows)
+    cap_reqs = {}  # capability-tier key -> request count, for the calls-vs-cost summary below
+    for _m, n, _i, _cw, _cr, _o, key, _c in rows:
+        if key in ("fable", "mythos", "opus"):
+            cap_reqs[key] = cap_reqs.get(key, 0) + n
+
+    hdr = f"{'model':<22}{'reqs':>6}{'% reqs':>8}{'input':>12}{'cache-w':>12}{'cache-r':>14}{'output':>10}{'cost $':>10}{'% cost':>8}"
     print(hdr)
     print("-" * len(hdr))
     for model, n, inp, cw, cr, out, key, c in rows:
+        preq = n / total_reqs * 100 if total_reqs else 0.0
         if c is None:
-            print(f"{model:<22}{n:>6}{inp:>12,}{cw:>12,}{cr:>14,}{out:>10,}{'?':>10}{'':>8}")
+            print(f"{model:<22}{n:>6}{preq:>8.1f}{inp:>12,}{cw:>12,}{cr:>14,}{out:>10,}{'?':>10}{'':>8}")
             continue
         pct = c / total_cost * 100 if total_cost else 0.0
-        print(f"{model:<22}{n:>6}{inp:>12,}{cw:>12,}{cr:>14,}{out:>10,}{c:>10.2f}{pct:>8.1f}")
+        print(f"{model:<22}{n:>6}{preq:>8.1f}{inp:>12,}{cw:>12,}{cr:>14,}{out:>10,}{c:>10.2f}{pct:>8.1f}")
 
     print("-" * len(hdr))
     total_pct = 100.0 if total_cost else 0.0
-    print(f"{'TOTAL':<22}{'':>6}{'':>12}{'':>12}{'':>14}{'':>10}{total_cost:>10.2f}{total_pct:>8.1f}")
+    print(f"{'TOTAL':<22}{'':>6}{'':>8}{'':>12}{'':>12}{'':>14}{'':>10}{total_cost:>10.2f}{total_pct:>8.1f}")
 
-    # How much did the work actually lean on the most-capable (most expensive) tier — the
-    # question the whole spare-the-top-tier setup exists to answer.
-    if total_cost > 0:
-        print(f"\ntop capability tier (opus/fable — the expensive tier): "
+    # The expensive capability tiers (Opus/Fable) on both axes at once — share of calls and
+    # share of cost. The two routinely diverge: a tier can be a minority of calls yet the
+    # majority of spend, because each of its calls is pricier. This is a concentration measure,
+    # not an escalation count — Opus is the orchestrator/ceiling here, and the real escalation
+    # valve (Codex) is billed by OpenAI and never shows up in these transcripts.
+    if total_cost > 0 and total_reqs and cap_reqs:
+        cap_calls = sum(cap_reqs.values())
+        # label only the capability tiers actually present (Opus first as the orchestrator),
+        # so a normal Opus-only session doesn't claim a Fable tier it never used
+        names = {"opus": "Opus", "fable": "Fable", "mythos": "Mythos"}
+        cap_label = "/".join(names[k] for k in ("opus", "fable", "mythos") if k in cap_reqs)
+        print(f"\nexpensive tier ({cap_label}): "
+              f"{cap_calls / total_reqs * 100:.1f}% of calls, "
               f"{capability_cost / total_cost * 100:.1f}% of cost")
         if fable_cost > 0:
-            print(f"  of which Fable (the now-removed top tier): "
+            fable_calls = cap_reqs.get("fable", 0) + cap_reqs.get("mythos", 0)
+            print(f"  Fable (now-removed top tier): "
+                  f"{fable_calls / total_reqs * 100:.1f}% of calls, "
                   f"{fable_cost / total_cost * 100:.1f}% of cost")
 
     if opus_counterfactual > mix_excl_haiku > 0:
